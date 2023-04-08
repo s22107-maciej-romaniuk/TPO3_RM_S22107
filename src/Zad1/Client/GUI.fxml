@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Zad1.Client.SubscriberGUI">
+   <children>
+      <VBox layoutX="76.0" layoutY="78.0" prefHeight="296.0" prefWidth="100.0">
+         <children>
+            <Label text="Available topics:" />
+            <ListView fx:id="availableTopicsListView" onMouseClicked="#handleAvailableTopicListClick" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS" />
+            <Button fx:id="subscribeButton" mnemonicParsing="false" onAction="#handleSubscribeButton" text="Subscribe" />
+         </children>
+      </VBox>
+      <VBox layoutX="200.0" layoutY="78.0" prefHeight="296.0" prefWidth="100.0">
+         <children>
+            <Label text="Subscribed to:" />
+            <ListView fx:id="subscribedTopicsListView" onMouseClicked="#handleSubscribedTopicListClick" prefHeight="179.0" prefWidth="79.0" VBox.vgrow="ALWAYS" />
+            <Button fx:id="unsubscribeButton" mnemonicParsing="false" onAction="#handleUnsubscribeButton" text="Unsubscribe" />
+         </children>
+      </VBox>
+      <VBox layoutX="325.0" layoutY="78.0" prefHeight="296.0" prefWidth="241.0">
+         <children>
+            <Label text="News:" />
+            <TextArea fx:id="messagesTextArea" editable="false" prefHeight="200.0" prefWidth="200.0" wrapText="true" VBox.vgrow="ALWAYS" />
+         </children>
+      </VBox>
+   </children>
+</AnchorPane>

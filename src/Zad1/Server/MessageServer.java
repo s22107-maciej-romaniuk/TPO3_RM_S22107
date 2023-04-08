@@ -1,14 +1,15 @@
 package Zad1.Server;
 
+import Zad1.Common.Common;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -43,59 +44,19 @@ public class MessageServer {
     }
 
 
-    private Set<SocketChannel> clientSet = new HashSet<>();
-    private Map<String, List<SocketChannel>> topicToSubscriberMap = new HashMap<>();
+    private final Set<SocketChannel> clientSet = new HashSet<>();
+    private final Map<String, Set<SocketChannel>> topicToSubscriberMap = new HashMap<>();
 
-    private void addTopic(String topic){
-        this.topicToSubscriberMap.put(topic, new LinkedList<>());
-    }
-    private void removeTopic(String topic){
-        this.topicToSubscriberMap.remove(topic);
-    }
 
-    private Map<SocketChannel, List<String>> socketToMessageMap = new HashMap<>();
-    private void queueNewMessage(String topic, String message){
-        for(SocketChannel channel : this.topicToSubscriberMap.get(topic)) {
-            this.socketToMessageMap.get(channel).add(message);
-        }
-    }
+
     private void removeClosedChannelFromMaps(SocketChannel sc){
-        this.socketToMessageMap.remove(sc);
         for(String topic : topicToSubscriberMap.keySet()){
             topicToSubscriberMap.get(topic).remove(sc);
         }
         this.clientSet.remove(sc);
-//        this.unregisterBroadcastChannelWithIdentifier(null, sc);
-//        this.unregisterIdentifierWithSubscriptionChannel(sc);
     }
 
-//    private Map<String, SocketChannel> identifierToBroadcastChannelMap = new HashMap<>();
-//    private void registerBroadcastChannelWithIdentifier(String identifier, SocketChannel sc){
-//        this.identifierToBroadcastChannelMap.put(identifier, sc);
-//    }
-//    private void unregisterBroadcastChannelWithIdentifier(String identifier, SocketChannel sc){
-//        if(identifier == null){
-//            identifier = this.getKey(this.identifierToBroadcastChannelMap, sc);
-//        }
-//        this.identifierToBroadcastChannelMap.remove(identifier);
-//    }
 
-//    private Map<SocketChannel, String> subscriptionChannelToIdentifierMap = new HashMap<>();
-//    private void registerIdentifierWithSubscriptionChannel(String identifier, SocketChannel sc){
-//        this.subscriptionChannelToIdentifierMap.put(sc, identifier);
-//    }
-//    private void unregisterIdentifierWithSubscriptionChannel(SocketChannel sc){
-//        this.subscriptionChannelToIdentifierMap.remove(sc);
-//    }
-//
-//    public <K, V> K getKey(Map<K, V> map, V value) {
-//        for (Entry<K, V> entry : map.entrySet()) {
-//            if (entry.getValue().equals(value)) {
-//                return entry.getKey();
-//            }
-//        }
-//        return null;
-//    }
 
 
     private void serviceConnections() {
@@ -115,17 +76,19 @@ public class MessageServer {
                         continue;
                     }
                     if(key.isAcceptable()){ //accept if new connection attempt
+                        System.out.println("Accepting connection");
                         SocketChannel cc = ssc.accept();
                         cc.configureBlocking(false);
                         cc.register(selector, SelectionKey.OP_READ);
+                        this.clientSet.add(cc);
                     }
                     if(key.isReadable()){ //read if new data available
+                        System.out.println("Subscribers before: " + this.topicToSubscriberMap.toString());
+                        System.out.println("Reading data");
                         SocketChannel cc = (SocketChannel) key.channel();
                         serviceRequest(cc);
+                        System.out.println("Subscribers after: " + this.topicToSubscriberMap.toString());
                     }
-//                    if(key.isWritable()){
-//                        // tutaj broadcast będzie albo i nie bo mogę writey bezpośrednio w wiadomości od admina robić
-//                    }
                 }
             }
             catch(Exception exc){
@@ -134,56 +97,42 @@ public class MessageServer {
         }
     }
 
-    private static Pattern reqPatt = Pattern.compile(" +", 3);
-    private static Charset charset  = Charset.forName("ISO-8859-2");
+    private static final Pattern reqPatt = Pattern.compile(" +", 3);
     private static final int BSIZE = 1024;
-    private ByteBuffer bbuf = ByteBuffer.allocate(BSIZE);
-    private StringBuffer reqString = new StringBuffer();
+    private final ByteBuffer bbuf = ByteBuffer.allocate(BSIZE);
+    private final StringBuffer reqString = new StringBuffer();
 
     private void serviceRequest(SocketChannel sc) {
         if(!sc.isOpen()) return;
+        System.out.println("Handling request");
         reqString.setLength(0);
         bbuf.clear();
         try{
-            readLoop:
-            while(true){
-                int n = sc.read(bbuf);     // nie natrafimy na koniec wiersza
-                if (n > 0) {
-                    bbuf.flip();
-                    CharBuffer cbuf = charset.decode(bbuf);
-                    while(cbuf.hasRemaining()) {
-                        char c = cbuf.get();
-                        if (c == '\r' || c == '\n') break readLoop;
-                        reqString.append(c);
-                    }
-                }
-            }
-
+            Common.readData(bbuf, sc, reqString);
+            System.out.println(reqString);
             String[] req = reqPatt.split(reqString);
             String cmd = req[0];
-            String topic;
+            String topicString;
             switch(cmd){
             case "SUBSCRIBE": //subskrybowanie do tematu
-                topic = req[1];
-                this.subscribe(topic, sc);
+                topicString = req[1];
+                this.subscribe(topicString, sc);
                 break;
             case "UNSUBSCRIBE": //odsubskrybowanie
-                topic = req[1];
-                this.unsubscribe(topic, sc);
+                topicString = req[1];
+                this.unsubscribe(topicString, sc);
                 break;
-//            case "REGISTER": //rejestracja nasłuchu klienta
-//                String identifier = req[1];
-//                String direction = req[2];
-//                this.register(sc, identifier, direction);
-//                break;
             case "BROADCAST": //roześlij tę wiadomość do klientów
-                topic = req[1]; //tematy rozdzielone średnikami
-                String message = req[2];
-                this.broadcastMessage(topic, message);
+                topicString = req[1];
+                String message = String.join(" ", Arrays.copyOfRange(req, 2, req.length));
+                this.broadcastMessage(topicString, message);
                 break;
             case "TOPICS": //dodanie nowego tematu
-                topic = String.join(" ", Arrays.copyOfRange(req, 1, req.length));
-                this.broadcastTopic(topic);
+                System.out.println("Received topics");
+                List<String> topics = Arrays.asList(Arrays.copyOfRange(req, 1, req.length));
+                topicString = String.join(" ", topics);
+                this.updateTopicToSubscriberMap(topics);
+                this.broadcastTopic(topicString);
                 break;
             }
 
@@ -194,6 +143,22 @@ public class MessageServer {
                 sc.socket().close();
             } catch (Exception e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+    private void updateTopicToSubscriberMap(List<String> topics) {
+        //remove forgotten topics
+        List<String> forgottenTopics = new ArrayList<>(this.topicToSubscriberMap.keySet());
+        forgottenTopics.removeAll(topics);
+        for (String topic:
+             forgottenTopics) {
+            this.topicToSubscriberMap.remove(topic);
+        }
+        //add new topics
+        for(String topic : topics){
+            if(!this.topicToSubscriberMap.containsKey(topic)){
+                this.topicToSubscriberMap.put(topic, new HashSet<>());
             }
         }
     }
@@ -217,29 +182,25 @@ public class MessageServer {
         }
     }
 
-//    private void register(SocketChannel sc, String identifier, String direction){
-//        if(direction.equals("SUBSCRIPTIONCHANNEL")){
-//            this.registerIdentifierWithSubscriptionChannel(identifier, sc);
-//        }
-//        else if(direction.equals("LISTENERCHANNEL")){
-//            this.registerBroadcastChannelWithIdentifier(identifier, sc);
-//        }
-//    }
-
     private void broadcastMessage(String topic, String message){
-        for(SocketChannel sc : this.topicToSubscriberMap.get(topic)){
-            try {
-                this.writeMessage(sc, topic, message);
-            }
-            catch(IOException ex){
-                System.out.println("Error during writing to SocketChannel");
+        System.out.println("Starting broadcast");
+        if(this.topicToSubscriberMap.get(topic) != null) {
+            for (SocketChannel sc : this.topicToSubscriberMap.get(topic)) {
+                System.out.println("Sending to next client");
+                try {
+                    this.writeMessage(sc, topic + ":", message);
+                } catch (IOException ex) {
+                    System.out.println("Error during writing to SocketChannel");
+                }
             }
         }
     }
 
     private void broadcastTopic(String topics)
     {
+        System.out.println("Broadcasting topics");
         for(SocketChannel sc : this.clientSet){
+            System.out.println("Sending topics to next client");
             try {
                 this.writeTopic(sc, topics);
             }
@@ -257,16 +218,14 @@ public class MessageServer {
         remsg.append(topic);
         remsg.append(" ");
         remsg.append(message);
-        ByteBuffer buf = charset.encode(CharBuffer.wrap(remsg));
-        sc.write(buf);
+        Common.sendData(remsg, sc);
     }
     private void writeTopic(SocketChannel sc, String topics) throws IOException {
         remsg.setLength(0);
         remsg.append("TOPICS");
         remsg.append(" ");
         remsg.append(topics);
-        ByteBuffer buf = charset.encode(CharBuffer.wrap(remsg));
-        sc.write(buf);
+        Common.sendData(remsg, sc);
     }
 
     public static void main(String[] args){

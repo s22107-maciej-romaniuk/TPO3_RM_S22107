@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Zad1.AdminConsole.AdminGUI">
+   <children>
+      <VBox layoutX="76.0" layoutY="29.0" prefHeight="354.0" prefWidth="161.0">
+         <children>
+            <Label text="Label" />
+            <ListView fx:id="topicListView" onMouseClicked="#handleTopicListClick" prefHeight="331.0" prefWidth="161.0" />
+         </children>
+      </VBox>
+      <VBox layoutX="342.0" layoutY="28.0" prefHeight="354.0" prefWidth="192.0">
+         <children>
+            <Label text="Topic to add:" />
+            <TextField fx:id="topicToAddField" />
+            <Button fx:id="addTopicButton" mnemonicParsing="false" onAction="#handleAddTopicButton" text="Add topic" />
+            <Separator orientation="VERTICAL" prefHeight="25.0" prefWidth="37.0" />
+            <Label text="Selected topic to remove:" />
+            <TextField fx:id="selectedTopicField" editable="false" />
+            <Button fx:id="removeTopicButton" mnemonicParsing="false" onAction="#handleRemoveTopicButton" text="Remove topic" />
+            <Separator orientation="VERTICAL" prefHeight="28.0" prefWidth="40.0" />
+            <Label text="Message to send to selected topic:" />
+            <TextArea fx:id="messageTextArea" prefHeight="200.0" prefWidth="200.0" />
+            <Button fx:id="sendMessageButton" mnemonicParsing="false" onAction="#handleSendMessageButton" text="Send message" />
+         </children>
+      </VBox>
+   </children>
+</AnchorPane>
