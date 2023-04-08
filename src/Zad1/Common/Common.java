@@ -1,6 +1,7 @@
 package Zad1.Common;
 
 import java.io.IOException;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.channels.SocketChannel;
@@ -16,7 +17,8 @@ public class Common {
         sc.write(buf);
     }
 
-    public static void readData(ByteBuffer bbuf, SocketChannel sc, StringBuffer reqString) throws IOException {
+    public static void readData(ByteBuffer bbuf, SocketChannel sc, StringBuffer reqString)
+            throws IOException, SocketChannelClosed {
         readLoop:
         while(true){
             int n = sc.read(bbuf);     // nie natrafimy na koniec wiersza
@@ -28,6 +30,9 @@ public class Common {
                     if (c == '\r' || c == '\n') break readLoop;
                     reqString.append(c);
                 }
+            }
+            if(n == -1){
+                throw new SocketChannelClosed("Socket has been closed");
             }
         }
     }

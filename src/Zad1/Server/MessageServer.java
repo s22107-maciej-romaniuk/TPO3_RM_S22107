@@ -1,6 +1,7 @@
 package Zad1.Server;
 
 import Zad1.Common.Common;
+import Zad1.Common.SocketChannelClosed;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -81,6 +82,7 @@ public class MessageServer {
                         cc.configureBlocking(false);
                         cc.register(selector, SelectionKey.OP_READ);
                         this.clientSet.add(cc);
+                        this.sendTopic(cc, String.join(" ",this.topicToSubscriberMap.keySet()));
                     }
                     if(key.isReadable()){ //read if new data available
                         System.out.println("Subscribers before: " + this.topicToSubscriberMap.toString());
@@ -130,17 +132,26 @@ public class MessageServer {
             case "TOPICS": //dodanie nowego tematu
                 System.out.println("Received topics");
                 List<String> topics = Arrays.asList(Arrays.copyOfRange(req, 1, req.length));
-                topicString = String.join(" ", topics);
                 this.updateTopicToSubscriberMap(topics);
-                this.broadcastTopic(topicString);
+                this.broadcastTopic(String.join(" ",this.topicToSubscriberMap.keySet()));
                 break;
             }
 
+        }
+        catch(SocketChannelClosed ex){
+            System.out.println(ex.getMessage());
+            try { sc.close();
+                sc.socket().close();
+                this.removeClosedChannelFromMaps(sc);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         catch(Exception ex){
             ex.printStackTrace();
             try { sc.close();
                 sc.socket().close();
+                this.removeClosedChannelFromMaps(sc);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -207,6 +218,15 @@ public class MessageServer {
             catch(IOException ex){
                 System.out.println("Error during writing to SocketChannel");
             }
+        }
+    }
+
+    private void sendTopic(SocketChannel cc, String topics) {
+        try {
+            this.writeTopic(cc, topics);
+        }
+        catch(IOException ex){
+            System.out.println("Error during writing to SocketChannel");
         }
     }
 

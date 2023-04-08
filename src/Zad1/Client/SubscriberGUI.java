@@ -41,8 +41,13 @@ public class SubscriberGUI extends Application {
     }
 
     @Override
-    public void stop(){
+    public void stop() {
         this.controller.connection.stopListening();
+        try {
+            this.controller.connection.clientChannel.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public IUpdater getUpdater(){
